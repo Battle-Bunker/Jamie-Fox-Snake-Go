@@ -202,9 +202,7 @@ func move(state GameState) BattlesnakeMoveResponse {
 		}
 	}
 
-	for move, area := range moveArea {
-		
-	}
+
 	
 	if len(safeMoves) == 0 {
 		log.Printf("MOVE %d: No safe moves detected :( Moving up\n", state.Turn)
