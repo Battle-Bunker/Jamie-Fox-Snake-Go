@@ -5,6 +5,37 @@ import (
 	"math"
 )
 
+func remove[T any](s []T, index int) []T {
+	return append(s[:index], s[index+1:]...)
+}
+
+// returns the number of occurrences of "value" in "s"
+func CountInstances[K comparable, V comparable](s map[K]V, value V) int {
+	var sum int = 0
+	for _, v := range s {
+		if v == value {
+			sum++
+		}
+	}
+	return sum
+}
+
+func moveCoord(position_in Coord, direction string) Coord {
+	var position_out Coord
+	switch direction {
+	case "up":
+		position_out = Coord{X: position_in.X, Y: position_in.Y + 1}
+	case "down":
+		position_out = Coord{X: position_in.X, Y: position_in.Y - 1}
+	case "left":
+		position_out = Coord{X: position_in.X - 1, Y: position_in.Y}
+	case "right":
+		position_out = Coord{X: position_in.X + 1, Y: position_in.Y}
+	default:
+		position_out = position_in // No change if direction is invalid
+	}
+	return position_out
+}
 
 func ManhattanDistance(p1, p2 Coord) int {
 	return int(math.Abs(float64(p1.X-p2.X)) + math.Abs(float64(p1.Y-p2.Y)))
@@ -56,7 +87,7 @@ func detect_danger(state GameState) []Coord {
 
 	for _, snake := range snakes {
 		for _, bodypart := range snake.Body {
-			if bodypart == snake.Body[snake.Length - 1] {
+			if bodypart == snake.Body[snake.Length-1] {
 				if snake.Health == 100 {
 					danger_zones = append(danger_zones, bodypart)
 				}
@@ -85,7 +116,7 @@ func floodFill(start Coord, board Board, dangerZones map[Coord]bool) int {
 	queue := []Coord{start}
 	visited := map[Coord]bool{start: true}
 	area := 0
-	
+
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
@@ -148,28 +179,21 @@ func move(state GameState) BattlesnakeMoveResponse {
 		}
 	}
 
+	var moveArea = make(map[string]int)
 	// Ensure moves don't lead to an area smaller than the snake's length
 	for move, isSafe := range isMoveSafe {
-		if isSafe {
-			var newHead Coord
-			switch move {
-			case "up":
-				newHead = Coord{X: myHead.X, Y: myHead.Y + 1}
-			case "down":
-				newHead = Coord{X: myHead.X, Y: myHead.Y - 1}
-			case "left":
-				newHead = Coord{X: myHead.X - 1, Y: myHead.Y}
-			case "right":
-				newHead = Coord{X: myHead.X + 1, Y: myHead.Y}
-			}
-
-			area := floodFill(newHead, state.Board, dangerMap)
-			if area < state.You.Length {
-				isMoveSafe[move] = false
-			}
+		if !isSafe {
+			continue
 		}
-	}
+		var newHead Coord = moveCoord(myHead, move)
 
+		moveArea[move] = floodFill(newHead, state.Board, dangerMap)
+		// adhock way of preventing the snake from feeling claustrophobic
+		if moveArea[move] < state.You.Length && CountInstances(isMoveSafe, false) > 1{
+			isMoveSafe[move] = false
+		}
+
+	}
 	// Are there any safe moves left?
 	safeMoves := []string{}
 	for move, isSafe := range isMoveSafe {
@@ -178,6 +202,10 @@ func move(state GameState) BattlesnakeMoveResponse {
 		}
 	}
 
+	for move, area := range moveArea {
+		
+	}
+	
 	if len(safeMoves) == 0 {
 		log.Printf("MOVE %d: No safe moves detected :( Moving up\n", state.Turn)
 		return BattlesnakeMoveResponse{Move: "up"}
